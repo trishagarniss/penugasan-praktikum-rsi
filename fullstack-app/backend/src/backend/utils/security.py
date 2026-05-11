@@ -1,9 +1,34 @@
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
+import jwt
+from datetime import datetime, timedelta, timezone
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    pwd_bytes = password.encode('utf-8')
+
+    salt = bcrypt.gensalt()
+    
+    hashed_password = bcrypt.hashpw(pwd_bytes, salt)
+    
+    return hashed_password.decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    password_byte_enc = plain_password.encode('utf-8')
+    hashed_password_byte_enc = hashed_password.encode('utf-8')
+    
+    return bcrypt.checkpw(password_byte_enc, hashed_password_byte_enc)
+
+SECRET_KEY = "kunci_rahasia_kelompok_dua_rsi_b" 
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 # Token akan hangus dalam 60 menit
+
+def create_access_token(data: dict):
+    """Fungsi untuk membuat token JWT setelah login berhasil"""
+    to_encode = data.copy()
+    
+    # Atur waktu kedaluwarsa token
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    
+    # Generate token
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt

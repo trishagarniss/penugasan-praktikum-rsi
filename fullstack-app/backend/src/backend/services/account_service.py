@@ -23,6 +23,8 @@ def add_new_account(db: Session, account_create: AccountCreate):
         if account.email == account_create.email:
             raise HTTPException(status_code=400, detail="Email sudah digunakan")
     
+    account_create.password = get_password_hash(account_create.password)
+    
     # Buat akun baru
     new_account = account_repo.create_account(db, account_create)
     return new_account
