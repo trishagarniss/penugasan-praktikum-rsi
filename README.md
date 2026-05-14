@@ -1,6 +1,6 @@
 # Praktikum Rekayasa Sistem Informasi (RSI)
 
-Repositori ini berisi *source code* untuk implementasi basis data relasional pada proyek Sistem Informasi Acara (acara-rsi).
+Repositori ini berisi *source code* untuk penugasan RSI.
 
 ## 🛠️ Tech Stack
 Proyek ini dibangun menggunakan teknologi berikut:
