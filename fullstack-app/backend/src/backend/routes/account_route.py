@@ -3,6 +3,7 @@ from sqlmodel import Session
 from src.backend.database.connection import get_session
 from src.backend.dto.account_dto import AccountCreate, AccountResponse
 from src.backend.controllers import account_controller
+from src.backend.dto.account_dto import LoginRequest
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
 
@@ -30,3 +31,8 @@ def update_account_route(account_id: int, account: AccountCreate, db: Session = 
 @router.delete("/{account_id}")
 def delete_account_route(account_id: int, db: Session = Depends(get_session)):
     return account_controller.delete_account_controller(account_id, db)
+
+# 6. LOGIN (POST)
+@router.post("/login")
+def login_route(login_data: LoginRequest, db: Session = Depends(get_session)):
+    return account_controller.login_controller(login_data, db)

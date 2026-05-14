@@ -3,6 +3,8 @@ from src.backend.repositories import account_repo, role_repo, user_repo
 from src.backend.dto.account_dto import AccountCreate, AccountResponse
 from fastapi import HTTPException
 from src.backend.utils.security import get_password_hash
+from src.backend.utils.security import get_password_hash, verify_password, create_access_token
+from src.backend.dto.account_dto import LoginRequest
 
 # Buat Akun Baru
 def add_new_account(db: Session, account_create: AccountCreate):
@@ -82,3 +84,20 @@ def remove_account(db: Session, account_id: int):
         raise HTTPException(status_code=500, detail="Gagal menghapus akun")
     
     return {"message": f"Akun dengan ID {account_id} berhasil dihapus"}
+
+# FITUR LOGIN
+def login_user(db: Session, login_data: LoginRequest):
+    existing_accounts = account_repo.get_accounts(db)
+    account = next((acc for acc in existing_accounts if acc.email == login_data.email), None)
+    
+    if not account:
+        raise HTTPException(status_code=401, detail="Email atau password salah")
+    
+    if not verify_password(login_data.password, account.password):
+        raise HTTPException(status_code=401, detail="Email atau password salah")
+    
+    access_token = create_access_token(
+        data={"sub": account.email, "role_id": account.role_id}
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}

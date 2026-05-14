@@ -1,0 +1,80 @@
+=========================================================
+PANDUAN PENGERJAAN BACKEND CRUD API - KELOMPOK 2
+=========================================================
+Tolong dibaca dan diikuti langkah-langkahnya agar tidak ada error/tabrakan kode.
+
+---------------------------------------------------------
+TAHAP 1: PERSIAPAN (SETUP AWAL LOKAL)
+---------------------------------------------------------
+1. Buka terminal di VS Code.
+2. Tarik update terbaru dari main: 
+   git pull origin main
+3. Pindah ke branch tugas kalian masing-masing (JANGAN NGODING DI MAIN!):
+   git checkout feat/[nama-tugas] 
+   (Contoh: git checkout feat/event)
+4. Update library (karena baru nambahin dotenv):
+   poetry install
+5. Nyalakan database Docker:
+   docker compose up -d
+
+---------------------------------------------------------
+TAHAP 2: URUTAN NGODING (METODE BOTTOM-UP)
+---------------------------------------------------------
+Semua file kerangka sudah disiapkan. Kalian tinggal buka folder 'src/backend/' 
+dan isi file kosong sesuai tugas entitas kalian (User, Account, Event, dll). 
+Kalian WAJIB mengerjakannya berurutan dari bawah ke atas:
+
+1. DTO (Folder: dto/)
+   - File: [entitas]_dto.py
+   - Tugas: Buat skema Pydantic (BaseModel) untuk mengatur data yang masuk (Create) dan keluar (Response). Sesuaikan atributnya persis dengan file ERD/PDF.
+
+2. REPOSITORY (Folder: repositories/)
+   - File: [entitas]_repo.py
+   - Tugas: Tempat untuk nulis query ke Database (SELECT, INSERT, UPDATE, DELETE) pakai SQLModel. Nggak boleh ada validasi error di sini.
+
+3. SERVICE (Folder: services/)
+   - File: [entitas]_service.py
+   - Tugas: Tempat nulis Business Logic. Di sini kalian ngecek validasi (misal: "Apakah data kosong?", "Apakah ID ketemu?"). Kalau error, panggil HTTPException. Kalau aman, panggil fungsi dari file Repository.
+
+4. CONTROLLER (Folder: controllers/)
+   - File: [entitas]_controller.py
+   - Tugas: Menerima request dari Route dan langsung melemparkannya ke fungsi yang ada di Service.
+
+5. ROUTE (Folder: routes/)
+   - File: [entitas]_route.py
+   - Tugas: Bikin endpoint API (@router.post, @router.get, dll). Tentukan path URL, response_model, dan panggil Controller di dalamnya.
+
+*Catatan: Bingung nulis kodenya? Buka aja file role_dto.py sampai role_route.py sebagai contoh contekan yang udah jalan!
+
+---------------------------------------------------------
+TAHAP 3: DAFTARKAN ENDPOINT KE APP.PY
+---------------------------------------------------------
+Setelah 5 file di atas selesai diisi, API kalian belum akan muncul kalau belum didaftarkan ke aplikasi utama.
+1. Buka file src/backend/app.py
+2. Di bagian atas, import route kalian:
+   from src.backend.routes import [entitas]_route
+3. Di bagian paling bawah, tambahkan kode ini:
+   app.include_router([entitas]_route.router)
+
+---------------------------------------------------------
+TAHAP 4: TESTING DI SWAGGER UI
+---------------------------------------------------------
+1. Nyalakan server backend di terminal:
+   poetry run fastapi dev src/backend/app.py
+2. Buka browser dan ketik alamat ini:
+   http://localhost:8000/docs
+3. Cari endpoint kalian, klik "Try it out", lalu "Execute".
+4. PENTING: Jangan lupa SCREENSHOT hasil dari skenario Success (200/201) dan skenario Failed (400/404) untuk dimasukkan ke laporan Word/Google Docs kelompok!
+
+---------------------------------------------------------
+TAHAP 5: SIMPAN & KUMPULKAN (GIT PUSH)
+---------------------------------------------------------
+Kalau semua operasi CRUD (Create, Read, Update, Delete) di Swagger sudah berhasil jalan tanpa error, simpan kerjaan kalian ke GitHub:
+1. git add .
+2. git commit -m "feat: menyelesaikan crud untuk entitas [nama-entitas]"
+3. git push origin feat/[nama-entitas]
+4. Kabari di grup WA kalau sudah selesai!
+
+=========================================================
+SEMANGAT NGULI CODE! 🔥
+=========================================================

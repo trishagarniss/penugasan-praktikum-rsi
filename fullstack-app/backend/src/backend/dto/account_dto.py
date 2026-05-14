@@ -19,3 +19,7 @@ class AccountResponse(BaseModel):
     
     class Config:
         from_attributes = True
+        
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
