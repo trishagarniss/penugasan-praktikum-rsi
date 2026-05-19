@@ -4,13 +4,22 @@ import React, { useState, useEffect } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+interface Event {
+  id: number;
+  name: string;
+  description: string;
+  quota: number;
+  started_at: string;
+  ended_at: string;
+}
+
 const UserEvents = () => {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [registeringId, setRegisteringId] = useState<number | null>(null);
-  const [registeredEvent, setRegisteredEvent] = useState<any | null>(null);
+  const [registeredEvent, setRegisteredEvent] = useState<Event | null>(null);
 
   // 1. Fungsi GET Data Events
   const fetchEvents = async () => {
@@ -33,27 +42,42 @@ const UserEvents = () => {
   }, []);
 
   const filteredEvents = events.filter(event => 
-    event.nama_event.toLowerCase().includes(searchQuery.toLowerCase())
+    event.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // 2. Fungsi POST Registrasi Event
-  const handleRegister = async (event: any) => {
-    setRegisteringId(event.id); 
+  const handleRegister = async (event: Event) => {
+    setRegisteringId(event.id);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Silakan login terlebih dahulu untuk mendaftar.");
+      setRegisteringId(null);
+      return;
+    }
+
+    // Decode JWT untuk dapat user_id (payload ada di bagian tengah)
+    let userId: number | null = null;
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      userId = payload.user_id;
+    } catch {
+      alert("Token tidak valid, silakan login ulang.");
+      setRegisteringId(null);
+      return;
+    }
     
     try {
-      // Sesuaikan URL endpoint ini dengan buatan backend nanti
-      const response = await fetch(`${API_URL}/events/${event.id}/register`, {
+      const response = await fetch(`${API_URL}/registrations/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // 'Authorization': `Bearer ${token}` // Wajib ada jika registrasi butuh user login
+          'Authorization': `Bearer ${token}`
         },
-        // body: JSON.stringify({ user_id: currentUserId }) // Opsional jika dibutuhkan backend
+        body: JSON.stringify({ user_id: userId, event_id: event.id })
       });
 
       if (!response.ok) throw new Error('Gagal melakukan pendaftaran');
 
-      // Tampilkan modal sukses jika API merespons 200/201 OK
       setRegisteredEvent(event);
       
     } catch (error) {
@@ -94,15 +118,17 @@ const UserEvents = () => {
             {filteredEvents.map((event) => (
               <div key={event.id} className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                 <div className="h-32 bg-slate-100 border-b flex items-center justify-center">
-                  <span className="text-slate-400 text-xs uppercase tracking-widest font-semibold">{event.lokasi}</span>
+                  <span className="text-slate-400 text-xs uppercase tracking-widest font-semibold">{event.quota} Kuota</span>
                 </div>
                 <div className="p-6 flex-1 flex flex-col">
                   <div className="flex justify-between items-start mb-4">
-                    <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">{event.status}</span>
-                    <span className="text-sm font-medium text-slate-500">{event.tanggal}</span>
+                    <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+                      {new Date(event.started_at) > new Date() ? 'Upcoming' : 'Berlangsung'}
+                    </span>
+                    <span className="text-sm font-medium text-slate-500">{new Date(event.started_at).toLocaleDateString('id-ID')}</span>
                   </div>
-                  <h3 className="text-xl font-bold mb-2">{event.nama_event}</h3>
-                  <p className="text-sm text-slate-600 line-clamp-3 mb-6 flex-1">{event.deskripsi || 'Belum ada deskripsi.'}</p>
+                  <h3 className="text-xl font-bold mb-2">{event.name}</h3>
+                  <p className="text-sm text-slate-600 line-clamp-3 mb-6 flex-1">{event.description || 'Belum ada deskripsi.'}</p>
                   
                   <button 
                     onClick={() => handleRegister(event)}
@@ -129,7 +155,7 @@ const UserEvents = () => {
               </svg>
             </div>
             <h3 className="text-2xl font-bold text-slate-900 mb-2">Registrasi Berhasil!</h3>
-            <p className="text-sm text-slate-500 mb-8">Kamu telah berhasil terdaftar pada event <span className="font-semibold text-slate-900">"{registeredEvent.nama_event}"</span>.</p>
+            <p className="text-sm text-slate-500 mb-8">Kamu telah berhasil terdaftar pada event <span className="font-semibold text-slate-900">&ldquo;{registeredEvent.name}&rdquo;</span>.</p>
             <button onClick={() => setRegisteredEvent(null)} className="w-full bg-indigo-600 text-white rounded-md h-11 font-medium">Tutup</button>
           </div>
         </div>

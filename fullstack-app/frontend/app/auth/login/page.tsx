@@ -47,6 +47,7 @@ export default function LoginCard() {
     try {
       const result = await loginUser({ email, password })
       localStorage.setItem("token", result.access_token)
+      window.dispatchEvent(new Event("auth-change"))
       router.push("/")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan")

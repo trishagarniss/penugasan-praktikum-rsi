@@ -1,35 +1,75 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+interface AdminEvent {
+  id: number;
+  name: string;
+  description: string;
+  quota: number;
+  started_at: string;
+  ended_at: string;
+}
+
 const AdminEvents = () => {
-  const [events, setEvents] = useState<any[]>([]);
+  const router = useRouter();
+  const [events, setEvents] = useState<AdminEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false); // State untuk loading saat POST
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newEvent, setNewEvent] = useState({
-    nama_event: '',
-    tanggal: '',
-    lokasi: '',
-    status: 'Upcoming'
+    name: '',
+    description: '',
+    quota: 30,
+    started_at: '',
+    ended_at: ''
   });
 
-  // 1. Fungsi GET Data Events dari Backend
+  // 1. Auth guard: redirect jika belum login atau bukan admin
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.replace("/auth/login");
+      return;
+    }
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      if (payload.role_id !== 1) {
+        router.replace("/");
+        return;
+      }
+    } catch {
+      router.replace("/auth/login");
+      return;
+    }
+  }, [router]);
+
+  // 2. Ambil token helper
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("token");
+    return {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
+  // 3. Fungsi GET Data Events dari Backend (khusus admin)
   const fetchEvents = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/events`);
+      const response = await fetch(`${API_URL}/events/admin`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) throw new Error('Gagal mengambil data dari server');
       
       const result = await response.json();
-      // Asumsi backend mengembalikan format: { data: [...] } atau array langsung [...]
       setEvents(result.data || result); 
     } catch (error) {
       console.error("Error fetching events:", error);
-      // Opsional: Tampilkan toast/alert error di sini
     } finally {
       setIsLoading(false);
     }
@@ -37,6 +77,7 @@ const AdminEvents = () => {
 
   useEffect(() => {
     fetchEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 2. Fungsi POST Data Event Baru ke Backend
@@ -47,23 +88,25 @@ const AdminEvents = () => {
     try {
       const response = await fetch(`${API_URL}/events`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // 'Authorization': `Bearer ${token}` // Buka komentar ini jika butuh token login temanmu
-        },
-        body: JSON.stringify(newEvent),
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          ...newEvent,
+          quota: Number(newEvent.quota),
+        }),
       });
 
-      if (!response.ok) throw new Error('Gagal menyimpan event');
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'Gagal menyimpan event');
+      }
 
-      // Jika sukses: Tutup modal, reset form, dan refresh tabel
       setIsModalOpen(false);
-      setNewEvent({ nama_event: '', tanggal: '', lokasi: '', status: 'Upcoming' });
+      setNewEvent({ name: '', description: '', quota: 30, started_at: '', ended_at: '' });
       fetchEvents(); 
       
     } catch (error) {
       console.error("Error saving event:", error);
-      alert("Terjadi kesalahan saat menyimpan event.");
+      alert(error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan event.");
     } finally {
       setIsSubmitting(false);
     }
@@ -102,7 +145,7 @@ const AdminEvents = () => {
                   <th className="h-12 px-6 font-medium">No</th>
                   <th className="h-12 px-6 font-medium">Nama Event</th>
                   <th className="h-12 px-6 font-medium">Tanggal</th>
-                  <th className="h-12 px-6 font-medium">Lokasi</th>
+                  <th className="h-12 px-6 font-medium">Kuota</th>
                   <th className="h-12 px-6 font-medium text-center">Status</th>
                   <th className="h-12 px-6 font-medium text-right">Aksi</th>
                 </tr>
@@ -116,11 +159,13 @@ const AdminEvents = () => {
                   events.map((event, index) => (
                     <tr key={event.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="p-6 text-slate-500">{index + 1}</td>
-                      <td className="p-6 font-medium">{event.nama_event}</td>
-                      <td className="p-6 text-slate-500">{event.tanggal}</td>
-                      <td className="p-6 text-slate-500">{event.lokasi}</td>
+                      <td className="p-6 font-medium">{event.name}</td>
+                      <td className="p-6 text-slate-500">{new Date(event.started_at).toLocaleDateString('id-ID')}</td>
+                      <td className="p-6 text-slate-500">{event.quota} peserta</td>
                       <td className="p-6 text-center">
-                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold">{event.status}</span>
+                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold">
+                          {new Date(event.started_at) > new Date() ? 'Upcoming' : 'Berlangsung'}
+                        </span>
                       </td>
                       <td className="p-6 text-right space-x-3">
                         <button className="text-sm font-medium text-slate-500 hover:text-indigo-600">Edit</button>
@@ -152,24 +197,25 @@ const AdminEvents = () => {
               <div className="p-6 space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Nama Event</label>
-                  <input required type="text" className="flex h-10 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-600" value={newEvent.nama_event} onChange={(e) => setNewEvent({...newEvent, nama_event: e.target.value})} />
+                  <input required type="text" className="flex h-10 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-600" value={newEvent.name} onChange={(e) => setNewEvent({...newEvent, name: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Deskripsi</label>
+                  <textarea className="flex w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-600 min-h-[80px]" value={newEvent.description} onChange={(e) => setNewEvent({...newEvent, description: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Tanggal</label>
-                    <input required type="date" className="flex h-10 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-600" value={newEvent.tanggal} onChange={(e) => setNewEvent({...newEvent, tanggal: e.target.value})} />
+                    <label className="text-sm font-medium">Mulai</label>
+                    <input required type="datetime-local" className="flex h-10 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-600" value={newEvent.started_at} onChange={(e) => setNewEvent({...newEvent, started_at: e.target.value})} />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Status</label>
-                    <select className="flex h-10 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-600" value={newEvent.status} onChange={(e) => setNewEvent({...newEvent, status: e.target.value})}>
-                      <option value="Upcoming">Upcoming</option>
-                      <option value="Planning">Planning</option>
-                    </select>
+                    <label className="text-sm font-medium">Selesai</label>
+                    <input required type="datetime-local" className="flex h-10 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-600" value={newEvent.ended_at} onChange={(e) => setNewEvent({...newEvent, ended_at: e.target.value})} />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Lokasi</label>
-                  <input required type="text" className="flex h-10 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-600" value={newEvent.lokasi} onChange={(e) => setNewEvent({...newEvent, lokasi: e.target.value})} />
+                  <label className="text-sm font-medium">Kuota Peserta</label>
+                  <input required type="number" min="1" className="flex h-10 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-600" value={newEvent.quota} onChange={(e) => setNewEvent({...newEvent, quota: Number(e.target.value)})} />
                 </div>
               </div>
               <div className="p-6 border-t flex justify-end gap-3 bg-slate-50/50 rounded-b-xl">
