@@ -14,16 +14,46 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useDebounce } from "@/hooks/useDebounce"
 import { validateEmail,validatePassword } from "@/lib/validation"
+import { loginUser } from "@/lib/auth"
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
 export default function LoginCard() {
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [emailError, setEmailError] = useState<string | null>(null)
   const [password, setPassword] = useState("")
   const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const debouncedEmail = useDebounce(email, 500)
   const debouncedPassword = useDebounce(password, 500)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    if (emailError || passwordError) {
+      setError("Perbaiki input yang salah sebelum login")
+      return
+    }
+    if (!email || !password) {
+      setError("Email dan password wajib diisi")
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const result = await loginUser({ email, password })
+      localStorage.setItem("token", result.access_token)
+      router.push("/")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     setEmailError(validateEmail(debouncedEmail))
@@ -48,8 +78,8 @@ export default function LoginCard() {
                 </Button>
                 </CardAction>
             </CardHeader>
+            <form onSubmit={handleSubmit}>
             <CardContent>
-                <form>
                 <div className="flex flex-col gap-6">
                     <div className="grid gap-2">
                         <Label htmlFor="email">
@@ -87,13 +117,16 @@ export default function LoginCard() {
                         )}
                     </div>
                 </div>
-                </form>
             </CardContent>
             <CardFooter className="flex-col gap-2">
-                <Button type="submit" className="w-full">
-                Login
+                {error && (
+                <p className="w-full text-xs font-medium text-destructive">{error}</p>
+                )}
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? "Memproses..." : "Login"}
                 </Button>
             </CardFooter>
+            </form>
         </Card>
     </div>
   )

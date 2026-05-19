@@ -25,6 +25,10 @@ def add_new_account(db: Session, account_create: AccountCreate):
         if account.email == account_create.email:
             raise HTTPException(status_code=400, detail="Email sudah digunakan")
     
+    # Cek apakah username sudah digunakan
+    if account_repo.get_account_by_username(db, account_create.username):
+        raise HTTPException(status_code=400, detail="Username sudah digunakan")
+    
     account_create.password = get_password_hash(account_create.password)
     
     # Buat akun baru
@@ -84,6 +88,11 @@ def remove_account(db: Session, account_id: int):
         raise HTTPException(status_code=500, detail="Gagal menghapus akun")
     
     return {"message": f"Akun dengan ID {account_id} berhasil dihapus"}
+
+# Cek ketersediaan username
+def check_username_availability(db: Session, username: str):
+    account = account_repo.get_account_by_username(db, username)
+    return {"available": account is None}
 
 # FITUR LOGIN
 def login_user(db: Session, login_data: LoginRequest):

@@ -23,6 +23,10 @@ def update_account_controller(account_id: int, account: AccountCreate, db: Sessi
 def delete_account_controller(account_id: int, db: Session):
     return account_service.remove_account(db, account_id)
 
-# 6. LOGIN
+# 6. CHECK USERNAME
+def check_username_controller(username: str, db: Session):
+    return account_service.check_username_availability(db, username)
+
+# 7. LOGIN
 def login_controller(login_data: LoginRequest, db: Session):
     return account_service.login_user(db, login_data)    

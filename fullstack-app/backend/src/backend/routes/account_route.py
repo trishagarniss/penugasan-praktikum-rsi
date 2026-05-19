@@ -17,22 +17,27 @@ def create_account_route(account: AccountCreate, db: Session = Depends(get_sessi
 def get_all_accounts_route(db: Session = Depends(get_session)):
     return account_controller.get_all_accounts_controller(db)
 
-# 3. READ BY ID (GET)
+# 3. CHECK USERNAME (GET)
+@router.get("/check-username/{username}")
+def check_username_route(username: str, db: Session = Depends(get_session)):
+    return account_controller.check_username_controller(username, db)
+
+# 4. READ BY ID (GET)
 @router.get("/{account_id}", response_model=AccountResponse)
 def get_account_by_id_route(account_id: int, db: Session = Depends(get_session)):
     return account_controller.get_account_by_id_controller(account_id, db)
 
-# 4. UPDATE (PUT)
+# 5. UPDATE (PUT)
 @router.put("/{account_id}", response_model=AccountResponse)
 def update_account_route(account_id: int, account: AccountCreate, db: Session = Depends(get_session)):
     return account_controller.update_account_controller(account_id, account, db)    
 
-# 5. DELETE (DELETE)
+# 6. DELETE (DELETE)
 @router.delete("/{account_id}")
 def delete_account_route(account_id: int, db: Session = Depends(get_session)):
     return account_controller.delete_account_controller(account_id, db)
 
-# 6. LOGIN (POST)
+# 7. LOGIN (POST)
 @router.post("/login")
 def login_route(login_data: LoginRequest, db: Session = Depends(get_session)):
     return account_controller.login_controller(login_data, db)

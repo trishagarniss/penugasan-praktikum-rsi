@@ -1,10 +1,13 @@
 from fastapi import FastAPI
 from src.backend.routes import account_route, event_route, user_route, role_route, registration_route
+from src.backend.middlewares.cors_middleware import setup_cors
 
 app = FastAPI(
     title="API Praktikum RSI Kelompok 2",
     description="Dokumentasi API untuk tugas CRUD"
 )
+
+setup_cors(app)
 
 @app.get("/")
 def read_root():

@@ -13,21 +13,29 @@ import {Label} from "@/components/ui/label"
 import {Input} from "@/components/ui/input"
 import {Button} from "@/components/ui/button"
 import {useState, useEffect} from "react";
+import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
-import { validateEmail, validatePassword, validateConfirmPassword, validateUsername, validateWhatsapp } from "@/lib/validation";
+import { validateEmail, validatePassword, validateConfirmPassword, validateWhatsapp } from "@/lib/validation";
+import { createUser, createAccount, checkUsername } from "@/lib/auth";
 import Link from "next/link";
 
 export default function RegistrationCard() {
+  const router = useRouter()
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
   const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [whatsappError, setWhatsappError] = useState<string | null>(null);
 
   const debouncedWhatsapp = useDebounce(whatsapp, 500);
@@ -53,8 +61,67 @@ export default function RegistrationCard() {
   }, [debouncedWhatsapp]);
 
   useEffect(() => {
-    setUsernameError(validateUsername(debouncedUsername));
+    if (!debouncedUsername) {
+      setUsernameError(null)
+      setUsernameAvailable(null)
+      return
+    }
+    if (debouncedUsername.length < 4) {
+      setUsernameError("Minimal 4 karakter")
+      setUsernameAvailable(null)
+      return
+    }
+    checkUsername(debouncedUsername).then((result) => {
+      if (result.available) {
+        setUsernameError(null)
+        setUsernameAvailable(true)
+      } else {
+        setUsernameError(result.message ?? "Username sudah digunakan")
+        setUsernameAvailable(false)
+      }
+    })
   }, [debouncedUsername]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    if (emailError || passwordError || confirmPasswordError || usernameError || whatsappError) {
+      setError("Perbaiki input yang salah sebelum mendaftar")
+      return
+    }
+    if (!firstName || !whatsapp || !username || !email || !password || !confirmPassword) {
+      setError("Lengkapi semua field yang wajib diisi")
+      return
+    }
+    if (password !== confirmPassword) {
+      setError("Password dan konfirmasi password tidak cocok")
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const user = await createUser({
+        first_name: firstName,
+        last_name: lastName,
+        whatsapp,
+      })
+
+      await createAccount({
+        user_id: user.id,
+        role_id: 2,
+        email,
+        username,
+        password,
+      })
+
+      router.push("/auth/login")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
@@ -70,18 +137,27 @@ export default function RegistrationCard() {
             </Button>
           </CardAction>
         </CardHeader>
+        <form onSubmit={handleSubmit}>
         <CardContent>
-          <form>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="first-name">
                   First Name <span className="text-destructive">*</span>
                 </Label>
-                <Input id="first-name" type="text" required/>
+                <Input
+                  id="first-name"
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required/>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="last-name">Last Name</Label>
-                <Input id="last-name" type="text"/>
+                <Input
+                  id="last-name"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}/>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="whatsapp">
@@ -117,8 +193,8 @@ export default function RegistrationCard() {
                 />
                 {usernameError ? (
                   <p className="text-xs font-medium text-destructive">{usernameError}</p>
-                ) : username.length > 3 && (
-                  <p className="text-xs font-medium text-green-600">Username available!</p>
+                ) : usernameAvailable && (
+                  <p className="text-xs font-medium text-green-600">Username tersedia</p>
                 )}
               </div>
               <div className="grid gap-2">
@@ -175,13 +251,16 @@ export default function RegistrationCard() {
                 )}
               </div>
             </div>
-          </form>
         </CardContent>
         <CardFooter className="flex-col gap-2">
-          <Button type="submit" className="w-full">
-            Register
+          {error && (
+            <p className="w-full text-xs font-medium text-destructive">{error}</p>
+          )}
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Mendaftarkan..." : "Register"}
           </Button>
         </CardFooter>
+        </form>
       </Card>
     </div>
   )

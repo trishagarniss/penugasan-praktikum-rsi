@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-// KONFIGURASI API (Ganti URL ini saat backend sudah siap)
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const AdminEvents = () => {
   const [events, setEvents] = useState<any[]>([]);

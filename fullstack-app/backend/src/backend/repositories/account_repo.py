@@ -35,6 +35,10 @@ def update_account(db: Session, account_id: int, account_data: AccountCreate):
         return db_account
     return None
 
+def get_account_by_username(db: Session, username: str):
+    accounts = db.exec(select(Account)).all()
+    return next((acc for acc in accounts if acc.username == username), None)
+
 def delete_account(db: Session, account_id: int):
     db_account = db.get(Account, account_id)
     if db_account:
